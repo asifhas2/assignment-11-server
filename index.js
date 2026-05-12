@@ -33,6 +33,7 @@ async function run() {
     const db = client.db("assignment_11");
     const userCollection = db.collection("users");
     const paymentCollection = db.collection("payments");
+    const lessonsCollection =db.collection("lessons");
 
     app.get("/users/:email", async (req, res) => {
       const email = req.params.email;
@@ -139,6 +140,16 @@ async function run() {
 
    res.send(result);
 });
+
+// lessons serverApi
+
+app.post('/lessons',async(req,res)=>{
+  const lesson = req.body;
+  const result = await lessonsCollection.insertOne(lesson);
+  res.send(result);
+})
+
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
