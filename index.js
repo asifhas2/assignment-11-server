@@ -143,6 +143,18 @@ async function run() {
 
 // lessons serverApi
 
+app.get('/lessons', async (req, res) => {
+  const email = req.query.email;
+
+  let query = {};
+  if (email) {
+    query = { creatorEmail: email };
+  }
+
+  const result = await lessonsCollection.find(query).toArray();
+  res.send(result);
+});
+
 app.post('/lessons',async(req,res)=>{
   const lesson = req.body;
   const result = await lessonsCollection.insertOne(lesson);
