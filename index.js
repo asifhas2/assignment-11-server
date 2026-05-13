@@ -35,6 +35,8 @@ async function run() {
     const paymentCollection = db.collection("payments");
     const lessonsCollection = db.collection("lessons");
     const commentsCollection =db.collection("comments");
+    const favoriteCollection =db.collection("favorite");
+    const reportCollection =db.collection("report");
 
     app.get("/users/:email", async (req, res) => {
       const email = req.params.email;
@@ -188,10 +190,13 @@ async function run() {
   res.send(result);
 });
 
-  app.patch("/lessons/favorite/:id", async (req, res) => {
+app.patch("/lessons/favorite/:id", async (req, res) => {
 
   const id = req.params.id;
 
+  const favoriteData = req.body;
+
+  // lesson update
   const filter = {
     _id: new ObjectId(id),
   };
@@ -202,12 +207,20 @@ async function run() {
     },
   };
 
-  const result = await lessonsCollection.updateOne(
+  const updateResult = await lessonsCollection.updateOne(
     filter,
     updateDoc
   );
 
-  res.send(result);
+  // save favorite collection
+  const favoriteResult = await favoriteCollection.insertOne(
+    favoriteData
+  );
+
+  res.send({
+    updateResult,
+    favoriteResult,
+  });
 });
 
 // comment api
@@ -237,29 +250,19 @@ app.get("/comments/:id", async (req, res) => {
   res.send(result);
 });
 
-    // //save api
-    // app.patch("/lessons/:id", async (req, res) => {
-    //   try {
-    //     const id = req.params.id;
+// report api
 
-    //     const filter = { _id: new ObjectId(id) };
+app.post('/report',async(req,res)=>{
+  const reportData= req.body;
+  const result = reportCollection.insertOne(reportData);
+  res.send(result);
+})
 
-    //     const updatedDoc = {
-    //       $inc: {
-    //         saves: 1,
-    //       },
-    //     };
 
-    //     const result = await lessonsCollection.updateOne(filter, updatedDoc);
 
-    //     res.send(result);
-    //   } catch (error) {
-    //     console.log(error);
-    //     res.status(500).send({ message: "Server Error" });
-    //   }
-    // });
+  
 
-    // Send a ping to confirm a successful connection
+
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!",
