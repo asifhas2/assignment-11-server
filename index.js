@@ -34,9 +34,9 @@ async function run() {
     const userCollection = db.collection("users");
     const paymentCollection = db.collection("payments");
     const lessonsCollection = db.collection("lessons");
-    const commentsCollection =db.collection("comments");
-    const favoriteCollection =db.collection("favorite");
-    const reportCollection =db.collection("report");
+    const commentsCollection = db.collection("comments");
+    const favoriteCollection = db.collection("favorite");
+    const reportCollection = db.collection("report");
 
     app.get("/users/:email", async (req, res) => {
       const email = req.params.email;
@@ -145,6 +145,28 @@ async function run() {
     });
 
     // lessons serverApi
+       app.get("/lessons/favorite", async (req, res) => {
+  try {
+    const email = req.query.email;
+
+    console.log(email);
+
+    const query = {
+      userEmail: email,
+    };
+
+    const result = await favoriteCollection.find(query).toArray();
+
+    res.send(result);
+  } catch (error) {
+    console.log("FAVORITE ERROR:", error);
+
+    res.status(500).send({
+      message: error.message,
+    });
+  }
+});
+
 
     app.get("/lessons", async (req, res) => {
       const email = req.query.email;
@@ -168,100 +190,98 @@ async function run() {
       res.send(result);
     });
 
-  app.patch("/lessons/like/:id", async (req, res) => {
+    app.post("/lessons", async (req, res) => {
+      try {
+        const lesson = req.body;
 
-  const id = req.params.id;
+        const result = await lessonsCollection.insertOne(lesson);
 
-  const filter = {
-    _id: new ObjectId(id),
-  };
+        res.send(result);
+      } catch (error) {
+        console.log(error);
 
-  const updateDoc = {
-    $inc: {
-      reactions: 1,
-    },
-  };
+        res.status(500).send({
+          message: "Failed to create lesson",
+        });
+      }
+    });
 
-  const result = await lessonsCollection.updateOne(
-    filter,
-    updateDoc
-  );
+    app.patch("/lessons/like/:id", async (req, res) => {
+      const id = req.params.id;
 
-  res.send(result);
-});
+      const filter = {
+        _id: new ObjectId(id),
+      };
 
-app.patch("/lessons/favorite/:id", async (req, res) => {
+      const updateDoc = {
+        $inc: {
+          reactions: 1,
+        },
+      };
 
-  const id = req.params.id;
+      const result = await lessonsCollection.updateOne(filter, updateDoc);
 
-  const favoriteData = req.body;
+      res.send(result);
+    });
 
-  // lesson update
-  const filter = {
-    _id: new ObjectId(id),
-  };
+      app.patch("/lessons/favorite/:id", async (req, res) => {
+      const id = req.params.id;
 
-  const updateDoc = {
-    $inc: {
-      saves: 1,
-    },
-  };
+      const favoriteData = req.body;
 
-  const updateResult = await lessonsCollection.updateOne(
-    filter,
-    updateDoc
-  );
+      // lesson update
+      const filter = {
+        _id: new ObjectId(id),
+      };
 
-  // save favorite collection
-  const favoriteResult = await favoriteCollection.insertOne(
-    favoriteData
-  );
+      const updateDoc = {
+        $inc: {
+          saves: 1,
+        },
+      };
 
-  res.send({
-    updateResult,
-    favoriteResult,
-  });
-});
+      const updateResult = await lessonsCollection.updateOne(filter, updateDoc);
 
-// comment api
+      // save favorite collection
+      const favoriteResult = await favoriteCollection.insertOne(favoriteData);
 
-app.post("/comments", async (req, res) => {
-
-  const commentData = req.body;
-
-  const result = await commentsCollection.insertOne(
-    commentData
-  );
-
-  res.send(result);
-});
-app.get("/comments/:id", async (req, res) => {
-
-  const lessonId = req.params.id;
-
-  const query = {
-    lessonId: lessonId,
-  };
-
-  const result = await commentsCollection
-    .find(query)
-    .toArray();
-
-  res.send(result);
-});
-
-// report api
-
-app.post('/report',async(req,res)=>{
-  const reportData= req.body;
-  const result = reportCollection.insertOne(reportData);
-  res.send(result);
-})
-
+      res.send({
+        updateResult,
+        favoriteResult,
+      });
+    });
 
 
   
 
+    // comment api
+
+    app.post("/comments", async (req, res) => {
+      const commentData = req.body;
+
+      const result = await commentsCollection.insertOne(commentData);
+
+      res.send(result);
+    });
+    app.get("/comments/:id", async (req, res) => {
+      const lessonId = req.params.id;
+
+      const query = {
+        lessonId: lessonId,
+      };
+
+      const result = await commentsCollection.find(query).toArray();
+
+      res.send(result);
+    });
+
+    // report api
+
+    app.post("/report", async (req, res) => {
+      const reportData = req.body;
+      const result = reportCollection.insertOne(reportData);
+      res.send(result);
+    });
 
     await client.db("admin").command({ ping: 1 });
     console.log(
