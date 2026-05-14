@@ -149,7 +149,7 @@ async function run() {
   try {
     const email = req.query.email;
 
-    console.log(email);
+    // console.log(email);
 
     const query = {
       userEmail: email,
