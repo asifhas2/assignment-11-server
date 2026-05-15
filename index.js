@@ -38,6 +38,12 @@ async function run() {
     const favoriteCollection = db.collection("favorite");
     const reportCollection = db.collection("report");
 
+    app.get("/users", async (req, res) => {
+      const result = await userCollection.find().toArray();
+
+      res.send(result);
+    });
+
     app.get("/users/:email", async (req, res) => {
       const email = req.params.email;
 
@@ -61,6 +67,20 @@ async function run() {
       }
 
       const result = await userCollection.insertOne(user);
+      res.send(result);
+    });
+
+    app.patch("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      const roleInfo = req.body;
+
+      const query = { _id: new ObjectId(id) };
+      const updateDocs = {
+        $set: {
+          role: roleInfo.role,
+        },
+      };
+      const result = await userCollection.updateOne(query, updateDocs);
       res.send(result);
     });
 
@@ -145,28 +165,78 @@ async function run() {
     });
 
     // lessons serverApi
-       app.get("/lessons/favorite", async (req, res) => {
-  try {
-    const email = req.query.email;
+    app.get("/lessons/favorite", async (req, res) => {
+      try {
+        const email = req.query.email;
 
-    // console.log(email);
+        // console.log(email);
 
-    const query = {
-      userEmail: email,
-    };
+        const query = {
+          userEmail: email,
+        };
 
-    const result = await favoriteCollection.find(query).toArray();
+        const result = await favoriteCollection.find(query).toArray();
 
-    res.send(result);
-  } catch (error) {
-    console.log("FAVORITE ERROR:", error);
+        res.send(result);
+      } catch (error) {
+        console.log("FAVORITE ERROR:", error);
 
-    res.status(500).send({
-      message: error.message,
+        res.status(500).send({
+          message: error.message,
+        });
+      }
     });
-  }
-});
+    app.patch("/lessons/featured/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
 
+        const filter = {
+          _id: new ObjectId(id),
+        };
+
+        const updatedDoc = {
+          $set: {
+            featured: true,
+          },
+        };
+
+        const result = await lessonsCollection.updateOne(filter, updatedDoc);
+
+        res.send(result);
+      } catch (error) {
+        console.log(error);
+
+        res.status(500).send({
+          message: "Failed to update featured",
+        });
+      }
+    });
+
+    app.patch("/lessons/reviewed/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+
+        const filter = {
+          _id: new ObjectId(id),
+        };
+
+        const updatedDoc = {
+          $set: {
+            reviewed: true,
+          },
+        };
+
+        const result = await lessonsCollection.updateOne(filter, updatedDoc);
+
+        res.send(result);
+      } catch (error) {
+        console.log(error);
+
+        res.status(500).send({
+          message: "Failed to mark reviewed",
+        });
+      }
+    });
 
     app.get("/lessons", async (req, res) => {
       const email = req.query.email;
@@ -188,6 +258,25 @@ async function run() {
 
       const result = await lessonsCollection.findOne(query);
       res.send(result);
+    });
+    app.delete("/lessons/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+
+        const query = {
+          _id: new ObjectId(id),
+        };
+
+        const result = await lessonsCollection.deleteOne(query);
+
+        res.send(result);
+      } catch (error) {
+        console.log(error);
+
+        res.status(500).send({
+          message: "Failed to delete lesson",
+        });
+      }
     });
 
     app.post("/lessons", async (req, res) => {
@@ -224,7 +313,7 @@ async function run() {
       res.send(result);
     });
 
-      app.patch("/lessons/favorite/:id", async (req, res) => {
+    app.patch("/lessons/favorite/:id", async (req, res) => {
       const id = req.params.id;
 
       const favoriteData = req.body;
@@ -251,9 +340,6 @@ async function run() {
       });
     });
 
-
-  
-
     // comment api
 
     app.post("/comments", async (req, res) => {
@@ -277,11 +363,72 @@ async function run() {
 
     // report api
 
+    app.get("/report", async (req, res) => {
+      const query = {};
+
+      const result = await reportCollection.find(query).toArray();
+
+      res.send(result);
+    });
+
     app.post("/report", async (req, res) => {
       const reportData = req.body;
       const result = reportCollection.insertOne(reportData);
       res.send(result);
     });
+
+    app.delete("/report/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+
+        const query = {
+          _id: new ObjectId(id),
+        };
+
+        const result = await reportCollection.deleteOne(query);
+
+        res.send(result);
+      } catch (error) {
+        console.log(error);
+
+        res.status(500).send({
+          message: error.message,
+        });
+      }
+    });
+
+    app.patch("/report/ignore/:id", async (req, res) => {
+  try {
+
+    const id = req.params.id;
+
+    const filter = {
+      _id: new ObjectId(id),
+    };
+
+    const updateDoc = {
+      $set: {
+        status: "ignored",
+      },
+    };
+
+    const result = await reportCollection.updateOne(
+      filter,
+      updateDoc
+    );
+
+    res.send(result);
+
+  } catch (error) {
+
+    console.log(error);
+
+    res.status(500).send({
+      message: error.message,
+    });
+
+  }
+});
 
     await client.db("admin").command({ ping: 1 });
     console.log(
