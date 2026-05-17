@@ -28,7 +28,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     const db = client.db("assignment_11");
     const userCollection = db.collection("users");
@@ -186,6 +186,41 @@ async function run() {
         });
       }
     });
+    const { ObjectId } = require("mongodb");
+
+    app.delete("/lessons/favorite/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+
+        const query = {
+          _id: new ObjectId(id),
+        };
+
+        const result = await favoriteCollection.deleteOne(query);
+
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({
+          message: "Failed to delete favorite lesson",
+          error,
+        });
+      }
+    });
+    app.get("/lessons/featured", async (req, res) => {
+      try {
+        const result = await lessonsCollection
+          .find({ featured: true })
+          .toArray();
+
+        res.send(result);
+      } catch (error) {
+        console.log(error);
+        res.status(500).send({
+          message: "Failed to get featured lessons",
+        });
+      }
+    });
+
     app.patch("/lessons/featured/:id", async (req, res) => {
       try {
         const id = req.params.id;
@@ -398,192 +433,178 @@ async function run() {
     });
 
     app.patch("/report/ignore/:id", async (req, res) => {
-  try {
+      try {
+        const id = req.params.id;
 
-    const id = req.params.id;
+        const filter = {
+          _id: new ObjectId(id),
+        };
 
-    const filter = {
-      _id: new ObjectId(id),
-    };
+        const updateDoc = {
+          $set: {
+            status: "ignored",
+          },
+        };
 
-    const updateDoc = {
-      $set: {
-        status: "ignored",
-      },
-    };
+        const result = await reportCollection.updateOne(filter, updateDoc);
 
-    const result = await reportCollection.updateOne(
-      filter,
-      updateDoc
-    );
+        res.send(result);
+      } catch (error) {
+        console.log(error);
 
-    res.send(result);
-
-  } catch (error) {
-
-    console.log(error);
-
-    res.status(500).send({
-      message: error.message,
+        res.status(500).send({
+          message: error.message,
+        });
+      }
     });
+    // admin api
 
-  }
-});
-// admin api
+    app.get("/admin/dashboard-stats", async (req, res) => {
+      try {
+        // total users
+        const totalUsers = await userCollection.countDocuments();
 
-app.get("/admin/dashboard-stats", async (req, res) => {
-  try {
-    // total users
-    const totalUsers = await userCollection.countDocuments();
-
-    // total public lessons
-    const totalLessons = await lessonsCollection.countDocuments({
-      privacy: "public",
-    });
-
-    // total reports
-    const reportedLessons = await reportCollection.countDocuments();
-
-    // today's lessons
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const todayLessons = await lessonsCollection.countDocuments({
-      createdAt: {
-        $gte: today,
-      },
-    });
-
-    res.send({
-      totalUsers,
-      totalLessons,
-      reportedLessons,
-      todayLessons,
-    });
-  } catch (error) {
-    res.status(500).send({
-      message: "Failed to load dashboard stats",
-    });
-  }
-});
-
-app.get("/admin/lesson-growth", async (req, res) => {
-  try {
-    const lessons = await lessonsCollection
-      .find({})
-      .sort({ createdAt: 1 })
-      .toArray();
-
-    const growthMap = {};
-
-    lessons.forEach((lesson) => {
-      const date = new Date(lesson.createdAt)
-        .toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
+        // total public lessons
+        const totalLessons = await lessonsCollection.countDocuments({
+          privacy: "public",
         });
 
-      if (!growthMap[date]) {
-        growthMap[date] = 0;
-      }
+        // total reports
+        const reportedLessons = await reportCollection.countDocuments();
 
-      growthMap[date] += 1;
-    });
+        // today's lessons
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
 
-    const chartData = Object.entries(growthMap).map(
-      ([date, count]) => ({
-        date,
-        count,
-      }),
-    );
-
-    res.send(chartData);
-  } catch (error) {
-    res.status(500).send({
-      message: "Failed to load lesson growth",
-    });
-  }
-});
-
-app.get("/admin/user-growth", async (req, res) => {
-  try {
-    const users = await userCollection
-      .find({})
-      .sort({ createdAt: 1 })
-      .toArray();
-
-    const growthMap = {};
-
-    users.forEach((user) => {
-      const date = new Date(user.createdAt)
-        .toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
+        const todayLessons = await lessonsCollection.countDocuments({
+          createdAt: {
+            $gte: today,
+          },
         });
 
-      if (!growthMap[date]) {
-        growthMap[date] = 0;
+        res.send({
+          totalUsers,
+          totalLessons,
+          reportedLessons,
+          todayLessons,
+        });
+      } catch (error) {
+        res.status(500).send({
+          message: "Failed to load dashboard stats",
+        });
       }
-
-      growthMap[date] += 1;
     });
 
-    const chartData = Object.entries(growthMap).map(
-      ([date, count]) => ({
-        date,
-        count,
-      }),
-    );
+    app.get("/admin/lesson-growth", async (req, res) => {
+      try {
+        const lessons = await lessonsCollection
+          .find({})
+          .sort({ createdAt: 1 })
+          .toArray();
 
-    res.send(chartData);
-  } catch (error) {
-    res.status(500).send({
-      message: "Failed to load user growth",
+        const growthMap = {};
+
+        lessons.forEach((lesson) => {
+          const date = new Date(lesson.createdAt).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          });
+
+          if (!growthMap[date]) {
+            growthMap[date] = 0;
+          }
+
+          growthMap[date] += 1;
+        });
+
+        const chartData = Object.entries(growthMap).map(([date, count]) => ({
+          date,
+          count,
+        }));
+
+        res.send(chartData);
+      } catch (error) {
+        res.status(500).send({
+          message: "Failed to load lesson growth",
+        });
+      }
     });
-  }
-});
 
-app.get("/admin/top-contributors", async (req, res) => {
-  try {
-    const result = await lessonsCollection.aggregate([
-      {
-        $group: {
-          _id: "$creatorEmail",
-          totalLessons: {
-            $sum: 1,
-          },
-          creatorName: {
-            $first: "$creatorName",
-          },
-        },
-      },
+    app.get("/admin/user-growth", async (req, res) => {
+      try {
+        const users = await userCollection
+          .find({})
+          .sort({ createdAt: 1 })
+          .toArray();
 
-      {
-        $sort: {
-          totalLessons: -1,
-        },
-      },
+        const growthMap = {};
 
-      {
-        $limit: 5,
-      },
-    ]).toArray();
+        users.forEach((user) => {
+          const date = new Date(user.createdAt).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          });
 
-    res.send(result);
-  } catch (error) {
-    res.status(500).send({
-      message: "Failed to load contributors",
+          if (!growthMap[date]) {
+            growthMap[date] = 0;
+          }
+
+          growthMap[date] += 1;
+        });
+
+        const chartData = Object.entries(growthMap).map(([date, count]) => ({
+          date,
+          count,
+        }));
+
+        res.send(chartData);
+      } catch (error) {
+        res.status(500).send({
+          message: "Failed to load user growth",
+        });
+      }
     });
-  }
-});
 
+    app.get("/admin/top-contributors", async (req, res) => {
+      try {
+        const result = await lessonsCollection
+          .aggregate([
+            {
+              $group: {
+                _id: "$creatorEmail",
+                totalLessons: {
+                  $sum: 1,
+                },
+                creatorName: {
+                  $first: "$creatorName",
+                },
+              },
+            },
 
+            {
+              $sort: {
+                totalLessons: -1,
+              },
+            },
 
+            {
+              $limit: 5,
+            },
+          ])
+          .toArray();
 
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!",
-    );
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({
+          message: "Failed to load contributors",
+        });
+      }
+    });
+
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!",
+    // );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
