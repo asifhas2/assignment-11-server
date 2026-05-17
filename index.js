@@ -429,6 +429,156 @@ async function run() {
 
   }
 });
+// admin api
+
+app.get("/admin/dashboard-stats", async (req, res) => {
+  try {
+    // total users
+    const totalUsers = await userCollection.countDocuments();
+
+    // total public lessons
+    const totalLessons = await lessonsCollection.countDocuments({
+      privacy: "public",
+    });
+
+    // total reports
+    const reportedLessons = await reportCollection.countDocuments();
+
+    // today's lessons
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const todayLessons = await lessonsCollection.countDocuments({
+      createdAt: {
+        $gte: today,
+      },
+    });
+
+    res.send({
+      totalUsers,
+      totalLessons,
+      reportedLessons,
+      todayLessons,
+    });
+  } catch (error) {
+    res.status(500).send({
+      message: "Failed to load dashboard stats",
+    });
+  }
+});
+
+app.get("/admin/lesson-growth", async (req, res) => {
+  try {
+    const lessons = await lessonsCollection
+      .find({})
+      .sort({ createdAt: 1 })
+      .toArray();
+
+    const growthMap = {};
+
+    lessons.forEach((lesson) => {
+      const date = new Date(lesson.createdAt)
+        .toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        });
+
+      if (!growthMap[date]) {
+        growthMap[date] = 0;
+      }
+
+      growthMap[date] += 1;
+    });
+
+    const chartData = Object.entries(growthMap).map(
+      ([date, count]) => ({
+        date,
+        count,
+      }),
+    );
+
+    res.send(chartData);
+  } catch (error) {
+    res.status(500).send({
+      message: "Failed to load lesson growth",
+    });
+  }
+});
+
+app.get("/admin/user-growth", async (req, res) => {
+  try {
+    const users = await userCollection
+      .find({})
+      .sort({ createdAt: 1 })
+      .toArray();
+
+    const growthMap = {};
+
+    users.forEach((user) => {
+      const date = new Date(user.createdAt)
+        .toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        });
+
+      if (!growthMap[date]) {
+        growthMap[date] = 0;
+      }
+
+      growthMap[date] += 1;
+    });
+
+    const chartData = Object.entries(growthMap).map(
+      ([date, count]) => ({
+        date,
+        count,
+      }),
+    );
+
+    res.send(chartData);
+  } catch (error) {
+    res.status(500).send({
+      message: "Failed to load user growth",
+    });
+  }
+});
+
+app.get("/admin/top-contributors", async (req, res) => {
+  try {
+    const result = await lessonsCollection.aggregate([
+      {
+        $group: {
+          _id: "$creatorEmail",
+          totalLessons: {
+            $sum: 1,
+          },
+          creatorName: {
+            $first: "$creatorName",
+          },
+        },
+      },
+
+      {
+        $sort: {
+          totalLessons: -1,
+        },
+      },
+
+      {
+        $limit: 5,
+      },
+    ]).toArray();
+
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({
+      message: "Failed to load contributors",
+    });
+  }
+});
+
+
+
 
     await client.db("admin").command({ ping: 1 });
     console.log(
